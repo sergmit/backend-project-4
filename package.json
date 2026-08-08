@@ -1,0 +1,38 @@
+{
+  "name": "@hexlet/code",
+  "version": "1.0.0",
+  "description": "[![Actions Status](https://github.com/sergmit/backend-project-4/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/sergmit/backend-project-4/actions)",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "page-loader": "./bin/pageLoader.js"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:coverage": "jest --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sergmit/backend-project-4.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sergmit/backend-project-4/issues"
+  },
+  "homepage": "https://github.com/sergmit/backend-project-4#readme",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@jest/globals": "^27.5.1",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "eslint": "^10.4.0",
+    "globals": "^17.6.0",
+    "jest-cli": "^30.4.2"
+  },
+  "dependencies": {
+    "axios": "^1.19.0",
+    "cheerio": "^1.2.0",
+    "commander": "^15.0.0"
+  }
+}
