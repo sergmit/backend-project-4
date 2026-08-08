@@ -1,59 +1,42 @@
-import axios from "axios";
-import { program } from "commander";
+import axios from 'axios';
+import { program } from 'commander';
 import fs from 'node:fs/promises';
-import path from "path";
-import save_images from "./save_images.js";
+import path from 'node:path';
+import loadResources from './loadResources.js';
+import { toLocalFilename } from './utils.js';
 
 const action = () => {
-  program.name('page-loader')
-    .description('Page loader utility')
-    .version('0.0.1')
-    .argument('<url>')
-    .option('-o, --output <string>', 'Path output')
-    .action(async (url) => {
-      console.log(pageLoader(url, program.opts().output))
-    })
-    program.parse()
-}
-
-const clearUrl = (url) => {
-    return url.replace(/^[^:]+:\/\//, "").replace(/[^\w]/g, '-');
-}
-
-export const pageLoader = (url, output) => {
-    const parsedUrl = URL.parse(url);
-    const host = parsedUrl.host;
-    const base = clearUrl(url);
-    const fileName = `${base}.html`;
-    const outputPath = path.join(output, fileName);
-    const filePath = path.join(output, `${base}_files`);
-    fs.access(filePath).then(() => {
-        fs.stat(filePath).then((data) => {
-            if (data.isDirectory() === false) {
-                return fs.mkdir(filePath);
+    program.name('page-loader')
+        .description('Downloads a page and its resources')
+        .version('0.0.1')
+        .argument('<url>')
+        .option('-o, --output <dir>', 'output dir', process.cwd())
+        .action(async (url, options) => {
+            try {
+                const filePath = await pageLoader(url, options.output);
+                console.log(`Page was downloaded as '${filePath}'`);
+            } catch (error) {
+                console.error(error.message);
+                process.exit(1);
             }
-            return true;
-        }).catch((e) => {
-            console.log(e.message);
-            process.exit()
         })
-    }).catch(() => {
-        return fs.mkdir(filePath);
-    })
+        .parse();
+};
 
+export const pageLoader = async (url, outputDir = process.cwd()) => {
+    const pageUrl = new URL(url);
+    const base = toLocalFilename(url);
+    const htmlFileName = `${base}.html`;
+    const filesDirName = `${base}_files`;
+    const filesDirPath = path.join(outputDir, filesDirName);
 
-    axios.get(url).then(({data}) => {
-        save_images(data, host, filePath).then(html => {
-            fs.writeFile(outputPath, html);
-        });
-        // const imgFilenames = images.map(item => {
-        //     const parsedImg = path.parse(item);
-        //     const filename = clearUrl(host + '/' + parsedImg.name) + parsedImg.ext;
-        //     return filename;
-        // })
-        // console.log(imgFilenames);
+    await fs.mkdir(filesDirPath, { recursive: true });
 
-    });
+    const { data: html } = await axios.get(url);
+    const newHtml = await loadResources(html, pageUrl, filesDirPath, filesDirName);
+
+    const outputPath = path.join(outputDir, htmlFileName);
+    await fs.writeFile(outputPath, newHtml);
 
     return outputPath;
 };
