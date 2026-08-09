@@ -23,14 +23,18 @@ const action = () => {
                 console.log(`Page was downloaded as '${filePath}'`);
             } catch (error) {
                 console.error(error.message);
-                process.exit(1);
             }
         })
         .parse();
 };
 
 export const pageLoader = async (url, outputDir = process.cwd()) => {
-    const pageUrl = new URL(url);
+    let pageUrl;
+    try {
+        pageUrl = new URL(url);
+    } catch {
+        throw new Error(`Invalid URL: ${url}`);
+    }
     const base = toLocalFilename(url);
     const htmlFileName = `${base}.html`;
     const filesDirName = `${base}_files`;
