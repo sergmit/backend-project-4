@@ -6,6 +6,7 @@ import nock from 'nock';
 import { pageLoader } from '../src/pageLoader.js';
 
 const FIXTURE_PATH = path.join(import.meta.dirname, '..', '__fixtures__', 'test.html');
+const EXTERNAL_FIXTURE_PATH = path.join(import.meta.dirname, '..', '__fixtures__', 'external-resources.html');
 
 nock.disableNetConnect();
 
@@ -57,17 +58,8 @@ describe('pageLoader', () => {
     });
 
     test('skips external resources and data urls', async () => {
-        const html = `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="stylesheet" href="/local.css">
-  </head>
-  <body>
-    <img src="data:image/png;base64,AAAA" alt="inline" />
-    <script src="https://example.com/external.js"></script>
-    <script src="/local.js"></script>
-  </body>
-</html>`;
+        const html = await fs.readFile(EXTERNAL_FIXTURE_PATH, 'utf-8');
+
         nock('http://localhost')
             .get('/page')
             .reply(200, html, { 'Content-Type': 'text/html' });
@@ -98,6 +90,7 @@ describe('pageLoader', () => {
 
         const outputDir = await createTempDir();
 
-        await expect(pageLoader('http://localhost/missing', outputDir)).rejects.toThrow();
+        await expect(pageLoader('http://localhost/missing', outputDir))
+            .rejects.toThrow('Failed to download http://localhost/missing: 404 Not Found');
     });
 });

@@ -4,7 +4,7 @@ import { program } from 'commander';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import loadResources from './loadResources.js';
-import { toLocalFilename } from './utils.js';
+import { getErrorMessage, toLocalFilename } from './utils.js';
 
 addLogger(axios);
 
@@ -37,7 +37,13 @@ export const pageLoader = async (url, outputDir = process.cwd()) => {
 
     await fs.mkdir(filesDirPath, { recursive: true });
 
-    const { data: html } = await axios.get(url);
+    let html;
+    try {
+        const response = await axios.get(url);
+        html = response.data;
+    } catch (error) {
+        throw new Error(`Failed to download ${url}: ${getErrorMessage(error)}`, { cause: error });
+    }
     const newHtml = await loadResources(html, pageUrl, filesDirPath, filesDirName);
 
     const outputPath = path.join(outputDir, htmlFileName);

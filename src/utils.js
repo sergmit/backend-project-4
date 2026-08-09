@@ -11,3 +11,10 @@ export const resourceFileName = (resourceUrl) => {
     const cleanName = `${host}${path.posix.join(dir, name)}`.replace(/[^\w]/g, '-');
     return ext ? `${cleanName}${ext}` : `${cleanName}.html`;
 };
+
+export const getErrorMessage = (error) => {
+    if (error.response) {
+        return `${error.response.status} ${error.response.statusText}`.trim();
+    }
+    return error.message;
+};

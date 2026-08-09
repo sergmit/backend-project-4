@@ -2,7 +2,7 @@ import * as cheerio from 'cheerio';
 import path from 'node:path';
 import axios from 'axios';
 import fs from 'node:fs/promises';
-import { resourceFileName } from './utils.js';
+import { getErrorMessage, resourceFileName } from './utils.js';
 
 const RESOURCE_TAGS = {
     img: 'src',
@@ -50,7 +50,7 @@ export default (html, pageUrl, fileDir, filesDirName) => {
                     $(el).attr(attribute, `${filesDirName}/${filename}`);
                 })
                 .catch((error) => {
-                    console.log(`Failed to download ${resourceUrl.href}: ${error.message}`);
+                    console.error(`Failed to download ${resourceUrl.href}: ${getErrorMessage(error)}`);
                 }),
         );
     });
