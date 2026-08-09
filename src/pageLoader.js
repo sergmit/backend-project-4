@@ -9,7 +9,7 @@ import { getErrorMessage, toLocalFilename } from './utils.js';
 
 addLogger(axios);
 
-const action = () => {
+export const action = () => {
 
 
     program.name('page-loader')
@@ -74,4 +74,4 @@ export const pageLoader = async (url, outputDir = process.cwd()) => {
     return outputPath;
 };
 
-export default action;
+export default pageLoader;
