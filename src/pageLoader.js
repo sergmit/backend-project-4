@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { addLogger } from 'axios-debug-log';
 import { program } from 'commander';
+import Listr from 'listr';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import loadResources from './loadResources.js';
@@ -34,20 +35,36 @@ export const pageLoader = async (url, outputDir = process.cwd()) => {
     const htmlFileName = `${base}.html`;
     const filesDirName = `${base}_files`;
     const filesDirPath = path.join(outputDir, filesDirName);
-
-    await fs.mkdir(filesDirPath, { recursive: true });
-
-    let html;
-    try {
-        const response = await axios.get(url);
-        html = response.data;
-    } catch (error) {
-        throw new Error(`Failed to download ${url}: ${getErrorMessage(error)}`, { cause: error });
-    }
-    const newHtml = await loadResources(html, pageUrl, filesDirPath, filesDirName);
-
     const outputPath = path.join(outputDir, htmlFileName);
-    await fs.writeFile(outputPath, newHtml);
+
+    const tasks = new Listr([
+        {
+            title: `Downloading page ${url}`,
+            task: async (ctx) => {
+                try {
+                    const { data } = await axios.get(url);
+                    ctx.html = data;
+                } catch (error) {
+                    throw new Error(`Failed to download ${url}: ${getErrorMessage(error)}`, { cause: error });
+                }
+            },
+        },
+        {
+            title: 'Downloading resources',
+            task: async (ctx) => {
+                await fs.mkdir(filesDirPath, { recursive: true });
+                ctx.html = await loadResources(ctx.html, pageUrl, filesDirPath, filesDirName);
+            },
+        },
+        {
+            title: 'Writing page',
+            task: async (ctx) => {
+                await fs.writeFile(outputPath, ctx.html);
+            },
+        },
+    ]);
+
+    await tasks.run();
 
     return outputPath;
 };
