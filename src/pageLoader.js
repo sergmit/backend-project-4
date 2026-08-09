@@ -42,6 +42,16 @@ export const pageLoader = async (url, outputDir = process.cwd()) => {
     const filesDirPath = path.join(outputDir, filesDirName);
     const outputPath = path.join(outputDir, htmlFileName);
 
+    let stat;
+    try {
+        stat = await fs.stat(outputDir);
+    } catch {
+        throw new Error(`Output directory does not exist: ${outputDir}`);
+    }
+    if (!stat.isDirectory()) {
+        throw new Error(`Output path is not a directory: ${outputDir}`);
+    }
+
     const tasks = new Listr([
         {
             title: `Downloading page ${url}`,
