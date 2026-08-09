@@ -23,6 +23,7 @@ const action = () => {
                 console.log(`Page was downloaded as '${filePath}'`);
             } catch (error) {
                 console.error(error.message);
+                process.exitCode = 1;
             }
         })
         .parse();
