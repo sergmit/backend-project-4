@@ -1,11 +1,16 @@
 import axios from 'axios';
+import { addLogger } from 'axios-debug-log';
 import { program } from 'commander';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import loadResources from './loadResources.js';
 import { toLocalFilename } from './utils.js';
 
+addLogger(axios);
+
 const action = () => {
+
+
     program.name('page-loader')
         .description('Downloads a page and its resources')
         .version('0.0.1')

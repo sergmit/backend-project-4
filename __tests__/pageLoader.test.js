@@ -1,63 +1,42 @@
 import fs from 'node:fs/promises';
-import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from '@jest/globals';
+import nock from 'nock';
 import { pageLoader } from '../src/pageLoader.js';
 
 const FIXTURE_PATH = path.join(import.meta.dirname, '..', '__fixtures__', 'test.html');
 
-const createServer = (handlers) => new Promise((resolve) => {
-    const server = http.createServer((req, res) => {
-        const handler = handlers[req.url];
-        if (!handler) {
-            res.writeHead(404);
-            res.end('Not found');
-            return;
-        }
-        handler(res);
-    });
-    server.listen(0, 'localhost', () => resolve(server));
+nock.disableNetConnect();
+
+afterEach(() => {
+    nock.cleanAll();
 });
 
-const cleanups = [];
-
-afterEach(async () => {
-    while (cleanups.length > 0) {
-        const cleanup = cleanups.pop();
-        await cleanup();
-    }
-});
+const createTempDir = () => fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
 
 describe('pageLoader', () => {
     test('downloads the page and its local resources, rewriting attributes', async () => {
         const fixture = await fs.readFile(FIXTURE_PATH, 'utf-8');
-        const server = await createServer({
-            '/courses': (res) => {
-                res.writeHead(200, { 'Content-Type': 'text/html' });
-                res.end(fixture);
-            },
-            '/assets/application.css': (res) => {
-                res.writeHead(200, { 'Content-Type': 'text/css' });
-                res.end('body { color: red; }');
-            },
-            '/assets/professions/nodejs.png': (res) => {
-                res.writeHead(200, { 'Content-Type': 'image/png' });
-                res.end(Buffer.from('fake-png'));
-            },
-            '/assets/application.js': (res) => {
-                res.writeHead(200, { 'Content-Type': 'application/javascript' });
-                res.end('console.log("hello");');
-            },
-        });
-        const port = server.address().port;
-        const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
-        cleanups.push(() => server.close());
-        cleanups.push(() => fs.rm(outputDir, { recursive: true, force: true }));
 
-        const base = `localhost-${port}-courses`;
-        const resourceBase = `localhost-${port}`;
-        const filePath = await pageLoader(`http://localhost:${port}/courses`, outputDir);
+        nock('http://localhost')
+            .get('/courses')
+            .reply(200, fixture, { 'Content-Type': 'text/html' });
+        nock('http://localhost')
+            .get('/assets/application.css')
+            .reply(200, 'body { color: red; }', { 'Content-Type': 'text/css' });
+        nock('http://localhost')
+            .get('/assets/professions/nodejs.png')
+            .reply(200, Buffer.from('fake-png'), { 'Content-Type': 'image/png' });
+        nock('http://localhost')
+            .get('/assets/application.js')
+            .reply(200, 'console.log("hello");', { 'Content-Type': 'application/javascript' });
+
+        const outputDir = await createTempDir();
+
+        const base = 'localhost-courses';
+        const resourceBase = 'localhost';
+        const filePath = await pageLoader('http://localhost/courses', outputDir);
 
         expect(path.basename(filePath)).toBe(`${base}.html`);
 
@@ -89,28 +68,21 @@ describe('pageLoader', () => {
     <script src="/local.js"></script>
   </body>
 </html>`;
-        const server = await createServer({
-            '/page': (res) => {
-                res.writeHead(200, { 'Content-Type': 'text/html' });
-                res.end(html);
-            },
-            '/local.css': (res) => {
-                res.writeHead(200, { 'Content-Type': 'text/css' });
-                res.end('body {}');
-            },
-            '/local.js': (res) => {
-                res.writeHead(200, { 'Content-Type': 'application/javascript' });
-                res.end('const a = 1;');
-            },
-        });
-        const port = server.address().port;
-        const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
-        cleanups.push(() => server.close());
-        cleanups.push(() => fs.rm(outputDir, { recursive: true, force: true }));
+        nock('http://localhost')
+            .get('/page')
+            .reply(200, html, { 'Content-Type': 'text/html' });
+        nock('http://localhost')
+            .get('/local.css')
+            .reply(200, 'body {}', { 'Content-Type': 'text/css' });
+        nock('http://localhost')
+            .get('/local.js')
+            .reply(200, 'const a = 1;', { 'Content-Type': 'application/javascript' });
 
-        const base = `localhost-${port}-page`;
-        const resourceBase = `localhost-${port}`;
-        const filePath = await pageLoader(`http://localhost:${port}/page`, outputDir);
+        const outputDir = await createTempDir();
+
+        const base = 'localhost-page';
+        const resourceBase = 'localhost';
+        const filePath = await pageLoader('http://localhost/page', outputDir);
 
         const result = await fs.readFile(filePath, 'utf-8');
         expect(result).toContain('src="data:image/png;base64,AAAA"');
@@ -120,12 +92,12 @@ describe('pageLoader', () => {
     });
 
     test('rejects when the page cannot be downloaded', async () => {
-        const server = await createServer({});
-        const port = server.address().port;
-        const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
-        cleanups.push(() => server.close());
-        cleanups.push(() => fs.rm(outputDir, { recursive: true, force: true }));
+        nock('http://localhost')
+            .get('/missing')
+            .reply(404);
 
-        await expect(pageLoader(`http://localhost:${port}/missing`, outputDir)).rejects.toThrow();
+        const outputDir = await createTempDir();
+
+        await expect(pageLoader('http://localhost/missing', outputDir)).rejects.toThrow();
     });
 });
