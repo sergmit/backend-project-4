@@ -25,7 +25,7 @@ export const action = () => {
                 .catch((error) => {
                     console.error(error.message);
                     process.exitCode = 1;
-                })
+                });
         })
         .parse();
 };
@@ -43,15 +43,12 @@ export const pageLoader = async (url, outputDir = process.cwd()) => {
     const filesDirPath = path.join(outputDir, filesDirName);
     const outputPath = path.join(outputDir, htmlFileName);
 
-    fs.stat(outputDir)
-        .then((stat) => {
-            if (!stat.isDirectory()) {
-                throw new Error(`Output path is not a directory: ${outputDir}`);
-            }
-        })
-        .catch(() => {
-            throw new Error(`Output path is not a directory: ${outputDir}`);
-        })
+    const stat = await fs.stat(outputDir).catch(() => {
+        throw new Error(`Output directory does not exist: ${outputDir}`);
+    });
+    if (!stat.isDirectory()) {
+        throw new Error(`Output path is not a directory: ${outputDir}`);
+    }
 
     const tasks = new Listr([
         {
@@ -60,22 +57,18 @@ export const pageLoader = async (url, outputDir = process.cwd()) => {
                 return axios.get(url)
                     .then(({data}) => {
                         ctx.html = data;
-                    }).catch((e) => {
+                    }).catch((error) => {
                         throw new Error(`Failed to download ${url}: ${getErrorMessage(error)}`, { cause: error });
                     });
             },
         },
         {
             title: 'Downloading resources',
-            task: (ctx) => {
-                return fs.mkdir(filesDirPath, { recursive: true })
-                    .then(() => {
-                        loadResources(ctx.html, pageUrl, filesDirPath, filesDirName)
-                            .then((html) => {
-                                ctx.html = html;
-                            })
-                    })
-            },
+            task: (ctx) => fs.mkdir(filesDirPath, { recursive: true })
+                .then(() => loadResources(ctx.html, pageUrl, filesDirPath, filesDirName))
+                .then((html) => {
+                    ctx.html = html;
+                }),
         },
         {
             title: 'Writing page',
@@ -86,9 +79,7 @@ export const pageLoader = async (url, outputDir = process.cwd()) => {
     ]);
 
     return tasks.run()
-        .then(() => {
-            return outputPath;
-        })
+        .then(() => outputPath);
 };
 
 export default pageLoader;
