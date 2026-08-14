@@ -1,5 +1,6 @@
 /node_modules/
 *.log
-coverage
+coverage/*                                                                                   32% used
+!coverage/lcov.info
 .DS_Store
 .idea

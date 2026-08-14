@@ -76,7 +76,7 @@ export const pageLoader = async (url, outputDir = process.cwd()) => {
                 return fs.writeFile(outputPath, ctx.html);
             },
         },
-    ]);
+    ], { renderer: process.env.NODE_ENV === 'test' ? 'silent' : 'default' });
 
     return tasks.run()
         .then(() => outputPath);

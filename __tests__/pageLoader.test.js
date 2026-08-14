@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, test } from '@jest/globals';
+import { afterEach, describe, expect, jest, test } from '@jest/globals';
+import axios from 'axios';
 import nock from 'nock';
 import { pageLoader } from '../src/pageLoader.js';
 
@@ -12,12 +13,13 @@ nock.disableNetConnect();
 
 afterEach(() => {
     nock.cleanAll();
+    nock.disableNetConnect();
 });
 
 const createTempDir = () => fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
 
 describe('pageLoader', () => {
-    test('downloads the page and its local resources, rewriting attributes', async () => {
+    test('скачивает страницу и локальные ресурсы, переписывая атрибуты', async () => {
         const fixture = await fs.readFile(FIXTURE_PATH, 'utf-8');
 
         nock('http://localhost')
@@ -57,7 +59,7 @@ describe('pageLoader', () => {
         }
     });
 
-    test('skips external resources and data urls', async () => {
+    test('пропускает внешние ресурсы и data-ссылки', async () => {
         const html = await fs.readFile(EXTERNAL_FIXTURE_PATH, 'utf-8');
 
         nock('http://localhost')
@@ -83,7 +85,7 @@ describe('pageLoader', () => {
         expect(result).toContain(`src="${base}_files/${resourceBase}-local.js"`);
     });
 
-    test('rejects when the page cannot be downloaded', async () => {
+    test('отклоняет промис, когда страницу не удаётся скачать', async () => {
         nock('http://localhost')
             .get('/missing')
             .reply(404);
@@ -91,6 +93,68 @@ describe('pageLoader', () => {
         const outputDir = await createTempDir();
 
         await expect(pageLoader('http://localhost/missing', outputDir))
-            .rejects.toThrow('Failed to download http://localhost/missing: 404 Not Found');
+            .rejects.toThrow(/Failed to download http:\/\/localhost\/missing: 404/);
+    });
+
+    test('отклоняет промис с ENOTFOUND, когда хост не резолвится', async () => {
+        const error = new Error('getaddrinfo ENOTFOUND localhost');
+        error.code = 'ENOTFOUND';
+        const getSpy = jest.spyOn(axios, 'get').mockRejectedValue(error);
+
+        const outputDir = await createTempDir();
+
+        try {
+            await expect(pageLoader('http://localhost/page', outputDir))
+                .rejects.toThrow(/ENOTFOUND/);
+        } finally {
+            getSpy.mockRestore();
+        }
+    });
+
+    test('отклоняет промис, когда выходная директория не существует', async () => {
+        const outputDir = path.join(os.tmpdir(), 'no-such-dir-page-loader');
+
+        await expect(pageLoader('http://localhost/page', outputDir))
+            .rejects.toThrow(`Output directory does not exist: ${outputDir}`);
+    });
+
+    test('отклоняет промис, когда выходной путь — файл, а не директория', async () => {
+        const tempDir = await createTempDir();
+        const outputDir = path.join(tempDir, 'file');
+        await fs.writeFile(outputDir, 'not a directory');
+
+        await expect(pageLoader('http://localhost/page', outputDir))
+            .rejects.toThrow(`Output path is not a directory: ${outputDir}`);
+    });
+
+    test('использует process.cwd() как выходную директорию по умолчанию', async () => {
+        const html = await fs.readFile(EXTERNAL_FIXTURE_PATH, 'utf-8');
+
+        nock('http://localhost')
+            .get('/page')
+            .reply(200, html, { 'Content-Type': 'text/html' });
+        nock('http://localhost')
+            .get('/local.css')
+            .reply(200, 'body {}', { 'Content-Type': 'text/css' });
+        nock('http://localhost')
+            .get('/local.js')
+            .reply(200, 'const a = 1;', { 'Content-Type': 'application/javascript' });
+
+        const cwd = await createTempDir();
+        const cwdSpy = jest.spyOn(process, 'cwd').mockReturnValue(cwd);
+
+        try {
+            const filePath = await pageLoader('http://localhost/page');
+
+            expect(path.basename(filePath)).toBe('localhost-page.html');
+            await expect(fs.readFile(filePath, 'utf-8')).resolves.toBeTruthy();
+        } finally {
+            cwdSpy.mockRestore();
+        }
+    });
+
+    test('отклоняет промис, когда опция вывода пуста', async () => {
+        await expect(pageLoader('http://localhost/page', ''))
+            .rejects.toThrow('Output directory does not exist');
     });
 });
