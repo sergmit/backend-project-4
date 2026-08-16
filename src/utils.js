@@ -2,7 +2,7 @@ import path from 'path';
 
 export const toLocalFilename = (url) => {
     const { host, pathname } = new URL(url);
-    return `${host}${pathname}`.replace(/[^\w]/g, '-');
+    return `${host}${pathname.replace(/\/$/, '')}`.replace(/[^\w]/g, '-');
 };
 
 export const resourceFileName = (resourceUrl) => {

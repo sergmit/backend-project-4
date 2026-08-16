@@ -7,7 +7,7 @@ describe('toLocalFilename', () => {
     });
 
     test('обрабатывает корневой путь', () => {
-        expect(toLocalFilename('http://localhost:8080/')).toBe('localhost-8080-');
+        expect(toLocalFilename('http://localhost:8080/')).toBe('localhost-8080');
     });
 });
 

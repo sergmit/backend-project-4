@@ -129,6 +129,27 @@ describe('pageLoader', () => {
             .rejects.toThrow(`Output path is not a directory: ${outputDir}`);
     });
 
+    test('называет файл laravel-com.html для корневого URL', async () => {
+        const html = await fs.readFile(EXTERNAL_FIXTURE_PATH, 'utf-8');
+
+        nock('https://laravel.com')
+            .get('/')
+            .reply(200, html, { 'Content-Type': 'text/html' });
+        nock('https://laravel.com')
+            .get('/local.css')
+            .reply(200, 'body {}', { 'Content-Type': 'text/css' });
+        nock('https://laravel.com')
+            .get('/local.js')
+            .reply(200, 'const a = 1;', { 'Content-Type': 'application/javascript' });
+
+        const outputDir = await createTempDir();
+
+        const filePath = await pageLoader('https://laravel.com', outputDir);
+
+        expect(path.basename(filePath)).toBe('laravel-com.html');
+        await expect(fs.readFile(filePath, 'utf-8')).resolves.toBeTruthy();
+    });
+
     test('использует process.cwd() как выходную директорию по умолчанию', async () => {
         const html = await fs.readFile(EXTERNAL_FIXTURE_PATH, 'utf-8');
 
