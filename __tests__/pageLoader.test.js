@@ -1,7 +1,9 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, jest, test } from '@jest/globals';
+import {
+    afterEach, describe, expect, jest, test,
+} from '@jest/globals';
 import axios from 'axios';
 import nock from 'nock';
 import { pageLoader } from '../src/pageLoader.js';
@@ -53,10 +55,10 @@ describe('pageLoader', () => {
             `${resourceBase}-assets-application.css`,
             `${resourceBase}-assets-application.js`,
         ];
-        for (const name of resourceNames) {
+        await Promise.all(resourceNames.map(async (name) => {
             const content = await fs.readFile(path.join(outputDir, `${base}_files`, name), 'utf-8');
             expect(content).toBeTruthy();
-        }
+        }));
     });
 
     test('пропускает внешние ресурсы и data-ссылки', async () => {

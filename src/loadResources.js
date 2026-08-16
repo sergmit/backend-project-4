@@ -1,7 +1,7 @@
-import * as cheerio from 'cheerio';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import axios from 'axios';
-import fs from 'node:fs/promises';
+import * as cheerio from 'cheerio';
 import { getErrorMessage, resourceFileName } from './utils.js';
 
 const RESOURCE_TAGS = {

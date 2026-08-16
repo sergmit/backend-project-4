@@ -13,10 +13,12 @@ describe('toLocalFilename', () => {
 
 describe('resourceFileName', () => {
     test('сохраняет расширение файла', () => {
-        expect(resourceFileName('https://ru.hexlet.io/assets/application.css')).toBe('ru-hexlet-io-assets-application.css');
+        expect(resourceFileName('https://ru.hexlet.io/assets/application.css'))
+            .toBe('ru-hexlet-io-assets-application.css');
     });
 
     test('добавляет .html, когда в пути нет расширения', () => {
-        expect(resourceFileName('https://ru.hexlet.io/assets/professions/nodejs')).toBe('ru-hexlet-io-assets-professions-nodejs.html');
+        expect(resourceFileName('https://ru.hexlet.io/assets/professions/nodejs'))
+            .toBe('ru-hexlet-io-assets-professions-nodejs.html');
     });
 });
