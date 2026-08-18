@@ -4,3 +4,4 @@ coverage/*                                                                      
 !coverage/lcov.info
 .DS_Store
 .idea
+demo.cast
