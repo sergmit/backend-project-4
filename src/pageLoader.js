@@ -18,35 +18,36 @@ const parseUrl = (value) => {
 };
 
 export const pageLoader = (url, outputDir = process.cwd()) => {
-    const pageUrl = parseUrl(url);
-    const base = toLocalFilename(url);
-    const htmlFileName = `${base}.html`;
-    const filesDirName = `${base}_files`;
-    const filesDirPath = path.join(outputDir, filesDirName);
-    const outputPath = path.join(outputDir, htmlFileName);
-
     const tasks = new Listr([
         {
             title: `Downloading page ${url}`,
-            task: async (ctx) => axios.get(url)
-                .then(({ data }) => {
-                    ctx.html = data;
-                })
-                .catch((error) => Promise.reject(
-                    new Error(`Failed to download ${url}: ${getErrorMessage(error)}`, { cause: error }),
-                )),
+            task: (ctx) => {
+                ctx.pageUrl = parseUrl(url);
+                const base = toLocalFilename(url);
+                ctx.filesDirName = `${base}_files`;
+                ctx.filesDirPath = path.join(outputDir, ctx.filesDirName);
+                ctx.outputPath = path.join(outputDir, `${base}.html`);
+
+                return axios.get(url)
+                    .then(({ data }) => {
+                        ctx.html = data;
+                    })
+                    .catch((error) => Promise.reject(
+                        new Error(`Failed to download ${url}: ${getErrorMessage(error)}`, { cause: error }),
+                    ));
+            },
         },
         {
             title: 'Downloading resources',
-            task: (ctx) => fs.mkdir(filesDirPath, { recursive: true })
-                .then(() => loadResources(ctx.html, pageUrl, filesDirPath, filesDirName))
+            task: (ctx) => fs.mkdir(ctx.filesDirPath, { recursive: true })
+                .then(() => loadResources(ctx.html, ctx.pageUrl, ctx.filesDirPath, ctx.filesDirName))
                 .then((html) => {
                     ctx.html = html;
                 }),
         },
         {
             title: 'Writing page',
-            task: (ctx) => fs.writeFile(outputPath, ctx.html),
+            task: (ctx) => fs.writeFile(ctx.outputPath, ctx.html),
         },
     ], { renderer: process.env.NODE_ENV === 'test' ? 'silent' : 'default' });
 
@@ -57,7 +58,7 @@ export const pageLoader = (url, outputDir = process.cwd()) => {
                 return Promise.reject(new Error(`Output path is not a directory: ${outputDir}`));
             }
             return tasks.run()
-                .then(() => outputPath);
+                .then((ctx) => ctx.outputPath);
         });
 };
 
@@ -67,7 +68,7 @@ export const action = () => {
         .version('0.0.1')
         .argument('<url>')
         .option('-o, --output <dir>', 'output dir', process.cwd())
-        .action(async (url, options) => {
+        .action((url, options) => {
             pageLoader(url, options.output)
                 .then((filePath) => {
                     console.log(`Page was downloaded as '${filePath}'`);
