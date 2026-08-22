@@ -31,9 +31,10 @@ export const pageLoader = (url, outputDir = process.cwd()) => {
             task: async (ctx) => axios.get(url)
                 .then(({ data }) => {
                     ctx.html = data;
-                }).catch((error) => {
-                    throw new Error(`Failed to download ${url}: ${getErrorMessage(error)}`, { cause: error });
-                }),
+                })
+                .catch((error) => Promise.reject(
+                    new Error(`Failed to download ${url}: ${getErrorMessage(error)}`, { cause: error }),
+                )),
         },
         {
             title: 'Downloading resources',
@@ -50,12 +51,10 @@ export const pageLoader = (url, outputDir = process.cwd()) => {
     ], { renderer: process.env.NODE_ENV === 'test' ? 'silent' : 'default' });
 
     return fs.stat(outputDir)
-        .catch(() => {
-            throw new Error(`Output directory does not exist: ${outputDir}`);
-        })
+        .catch(() => Promise.reject(new Error(`Output directory does not exist: ${outputDir}`)))
         .then((stat) => {
             if (!stat.isDirectory()) {
-                throw new Error(`Output path is not a directory: ${outputDir}`);
+                return Promise.reject(new Error(`Output path is not a directory: ${outputDir}`));
             }
             return tasks.run()
                 .then(() => outputPath);
