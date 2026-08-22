@@ -46,12 +46,10 @@ export default (html, pageUrl, fileDir, filesDirName) => {
         const filename = resourceFileName(resourceUrl);
         tasks.push(
             downloadResource(resourceUrl, fileDir, filename)
-                .then(() => {
-                    $(el).attr(attribute, `${filesDirName}/${filename}`);
-                })
-                .catch((error) => {
-                    console.error(`Failed to download ${resourceUrl.href}: ${getErrorMessage(error)}`);
-                }),
+                .then(() => $(el).attr(attribute, `${filesDirName}/${filename}`))
+                .catch((error) => Promise.reject(
+                    new Error(`Failed to download ${resourceUrl.href}: ${getErrorMessage(error)}`),
+                )),
         );
     });
 
