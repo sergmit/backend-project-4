@@ -17,20 +17,13 @@ const parseUrl = (value) => {
     }
 };
 
-export const pageLoader = async (url, outputDir = process.cwd()) => {
+export const pageLoader = (url, outputDir = process.cwd()) => {
     const pageUrl = parseUrl(url);
     const base = toLocalFilename(url);
     const htmlFileName = `${base}.html`;
     const filesDirName = `${base}_files`;
     const filesDirPath = path.join(outputDir, filesDirName);
     const outputPath = path.join(outputDir, htmlFileName);
-
-    const stat = await fs.stat(outputDir).catch(() => {
-        throw new Error(`Output directory does not exist: ${outputDir}`);
-    });
-    if (!stat.isDirectory()) {
-        throw new Error(`Output path is not a directory: ${outputDir}`);
-    }
 
     const tasks = new Listr([
         {
@@ -56,8 +49,17 @@ export const pageLoader = async (url, outputDir = process.cwd()) => {
         },
     ], { renderer: process.env.NODE_ENV === 'test' ? 'silent' : 'default' });
 
-    return tasks.run()
-        .then(() => outputPath);
+    return fs.stat(outputDir)
+        .catch(() => {
+            throw new Error(`Output directory does not exist: ${outputDir}`);
+        })
+        .then((stat) => {
+            if (!stat.isDirectory()) {
+                throw new Error(`Output path is not a directory: ${outputDir}`);
+            }
+            return tasks.run()
+                .then(() => outputPath);
+        });
 };
 
 export const action = () => {
